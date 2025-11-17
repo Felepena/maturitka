@@ -20,12 +20,15 @@ export default function CompletionPage() {
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ prompt })
       })
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error||"something went wrong");
+        let errMsg = "something went wrong";
+        try {
+          const err = await response.json();
+          errMsg = err?.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
       }
-
+      const data = await response.json();
       setCompletion(data.text);
       }catch (error) {
       console.log("Error", error)
@@ -39,13 +42,20 @@ export default function CompletionPage() {
 
   return (
     <div className="min-h-[100dvh] bg-neutral-50 text-neutral-900 flex flex-col">
-      {error && <div className={"text-red-500 mb-4"}> {error} </div>}
-      <main className="flex-1 w-full" />
-      {isLoading ? (
-          <div className="flex items-center justify-center w-full h-full">Loading...</div>
-      ): completion ? (
-          <div className="whitespace-pre-wrap">{completion}</div>
-      ): null}
+      <main className="flex-1 w-full">
+        <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
+          {error && <div className="text-red-600 text-sm">{error}</div>}
+          {isLoading ? (
+            <div className="text-sm text-neutral-600">Generating…</div>
+          ) : completion ? (
+            <div className="whitespace-pre-wrap rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+              {completion}
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-500">Type a message to get started.</p>
+          )}
+        </div>
+      </main>
       <form onSubmit={complete} className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="mx-auto max-w-3xl px-4 py-4">
           <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-neutral-800">
