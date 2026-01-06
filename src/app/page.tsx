@@ -26,7 +26,7 @@ export default function Home() {
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
 
-                    <Button style={"bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-medium"} text="Start Chating" path="/OpenAI"/>
+                    <Button style={"bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-medium"} text="Start Chating" path="/protected/uiopenai/stream"/>
                     <Button style={"bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-full font-medium"} text="Login" path="/login"/>
                 </div>
             </div>

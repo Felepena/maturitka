@@ -1,12 +1,11 @@
 import {generateText} from "ai"
 import {openai} from "@ai-sdk/openai"
 
-export async function POST(req: Request) {
+export async function POST() {
     try {
-        const {prompt} = await req.json()
         const {text} = await generateText({
-            model: openai("gpt-5-pro"),
-            prompt,
+            model: openai("gpt-4.1-nano"),
+            prompt: "how are you",
         });
 
         return Response.json({text})

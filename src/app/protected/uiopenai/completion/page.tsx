@@ -1,0 +1,99 @@
+"use client"
+import { useState } from "react";
+import { useAuth } from "@/app/contex/contex";
+import { saveReceipt } from "@/app/lib/save-receipt";
+
+export default function CompletionPage() {
+  const [prompt, setPrompt] = useState("");
+  const [completion, setCompletion] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const [message, setMessage] = useState<string | null>(null);
+
+  const complete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const currentPrompt = prompt; // keep for saving
+    setPrompt("");
+    try {
+      const response = await fetch("/api/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: currentPrompt }),
+      });
+      if (!response.ok) {
+        let errMsg = "something went wrong";
+        try {
+          const err = await response.json();
+          errMsg = err?.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
+      }
+      const data = await response.json();
+      const text = typeof data === "string" ? data : (data?.text ?? "");
+      setCompletion(text);
+
+      try {
+        if (!user) {
+          setMessage("Please sign in to save the result.");
+        } else {
+          console.log("Saving completion to Firestore...");
+          await saveReceipt(user, text);
+          console.log("Saved completion to Firestore");
+          setMessage("Saved to your database.");
+        }
+      } catch (e: any) {         console.error("Firestore save failed", e);         const msg = (e && e.message) ? String(e.message) : "Failed to save to database.";         setMessage(msg.includes("Missing or insufficient permissions") ? "Missing Firestore permissions for users/" + (user?.uid||"<uid>") + "/receipts. Check security rules." : msg);
+      }
+    } catch (error) {
+      console.log("Error", error);
+      setError(error instanceof Error ? error.message : "Something went wrong. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-[100dvh] bg-neutral-50 text-neutral-900 flex flex-col">
+      <main className="flex-1 w-full">
+        <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
+          {error && <div className="text-red-600 text-sm">{error}</div>}
+          {message && <div className="text-sm text-green-700">{message}</div>}
+          {isLoading ? (
+            <div className="text-sm text-neutral-600">Generating.</div>
+          ) : completion ? (
+            <div className="whitespace-pre-wrap rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+              {completion}
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-500">Type a message to get started.</p>
+          )}
+        </div>
+      </main>
+      <form onSubmit={complete} className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="mx-auto max-w-3xl px-4 py-4">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800 active:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="h-4 w-4"
+                aria-hidden
+              >
+                <path d="M2.3 2.3a1 1 0 0 1 1.02-.24l18 6a1 1 0 0 1 0 1.88l-7.33 2.44a1 1 0 0 0-.62.62L11.03 20a1 1 0 0 1-1.88 0l-6-18a1 1 0 0 1 .15-.92ZM6.2 6.2l3.46 10.38 1.4-4.2a3 3 0 0 1 1.86-1.86l4.2-1.4L6.2 6.2Z" />
+              </svg>
+              <span className="hidden sm:inline">Send</span>
+            </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+
+
+

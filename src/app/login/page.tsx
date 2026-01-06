@@ -22,7 +22,7 @@ export default function LoginPage() {
     }, [isLoading, user, router])
 
 
-    const handleLogin = async (e) => {
+    const handleLogin = async (e: any) => {
         e.preventDefault()
         setIsLoading(true)
         setError("")
