@@ -54,7 +54,7 @@ export default function CompletionPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-neutral-50 text-neutral-900 flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col">
       <main className="flex-1 w-full">
         <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
           {error && <div className="text-red-600 text-sm">{error}</div>}
@@ -62,7 +62,7 @@ export default function CompletionPage() {
           {isLoading ? (
             <div className="text-sm text-neutral-600">Generating.</div>
           ) : completion ? (
-            <div className="whitespace-pre-wrap rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div className="whitespace-pre-wrap rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm text-[15px] leading-6">
               {completion}
             </div>
           ) : (
@@ -72,10 +72,18 @@ export default function CompletionPage() {
       </main>
       <form onSubmit={complete} className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="mx-auto max-w-3xl px-4 py-4">
+          <div className="flex items-start gap-2 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-neutral-800">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Ask something…"
+              rows={2}
+              className="w-full resize-none bg-transparent outline-none placeholder:text-neutral-400 text-[15px] py-1"
+            />
             <button
               type="submit"
-              disabled={isLoading}
-              className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800 active:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading || !prompt.trim()}
+              className="inline-flex items-center gap-2 self-end rounded-xl bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800 active:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -88,6 +96,7 @@ export default function CompletionPage() {
               </svg>
               <span className="hidden sm:inline">Send</span>
             </button>
+          </div>
         </div>
       </form>
     </div>

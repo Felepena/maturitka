@@ -204,7 +204,6 @@ export default function MultiModalChatPage() {
               onChange={(event) => {
                 const fl = event.target.files || undefined;
                 if (fl && fl.length > 0) {
-                  // Only keep first file; images only.
                   const dt = new DataTransfer();
                   if (fl[0] && fl[0].type.startsWith("image/")) dt.items.add(fl[0]);
                   setFiles(dt.files);

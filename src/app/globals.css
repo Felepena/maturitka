@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+/* Base theme */
+html, body {
+  background-color: #fafafa;
+  color: #0a0a0a;
+}
+
+/* Space for fixed header */
+body {
+  padding-top: 56px;
+}
+
+/* Better focus outline for accessibility */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: 2px solid #0a0a0a;
+  outline-offset: 2px;
+}
+
+/* Typography tweaks */
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+}
