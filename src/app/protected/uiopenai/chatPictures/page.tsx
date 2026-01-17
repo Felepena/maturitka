@@ -56,7 +56,7 @@ export default function MultiModalChatPage() {
   }
 
   const { messages, sendMessage, status, error, stop } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/multimodel-chat" }),
+    transport: new DefaultChatTransport({ api: `/api/multimodel-chat${user?.uid ? `?uid=${encodeURIComponent(user.uid)}` : ""}` }),
     onFinish: async (m: any) => {
       try {
         // Normalize event/message shape from the SDK
@@ -132,9 +132,13 @@ export default function MultiModalChatPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-neutral-50 text-neutral-900 flex flex-col">
+    <div className="min-h-[100dvh] text-neutral-900 flex flex-col" style={{ backgroundColor: '#F5F0D7' }}>
       <main className="flex-1 w-full">
-        <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
+        <div className="mx-auto max-w-3xl px-4 py-8 space-y-5">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900">Add Products From a Photo</h1>
+            <p className="text-neutral-700">Upload a receipt or fridge photo. We’ll analyze it and save the items.</p>
+          </div>
           {error && <div className="text-red-600 text-sm">{error.message}</div>}
           {message && <div className="text-green-700 text-sm">{message}</div>}
 
@@ -183,13 +187,14 @@ export default function MultiModalChatPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="sticky bottom-0 w-full border-t border-neutral-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60"
+        className="sticky bottom-0 w-full border-t backdrop-blur"
+        style={{ backgroundColor: '#EEF3E0', borderTopColor: '#D6E3B8', borderTopWidth: 1 }}
       >
         <div className="mx-auto max-w-3xl px-4 py-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-3 shadow-sm">
+          <div className="flex items-center gap-3 rounded-full border bg-white px-2 py-2 shadow" style={{ borderColor: '#D6E3B8' }}>
             <label
               htmlFor="file-upload"
-              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900 cursor-pointer border border-neutral-300 hover:border-neutral-400 bg-neutral-50"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-neutral-800 hover:text-neutral-900 cursor-pointer border border-neutral-300 hover:border-neutral-400 bg-white"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden>
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
@@ -218,7 +223,8 @@ export default function MultiModalChatPage() {
                 <button
                   type="button"
                   onClick={stop}
-                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-red-700"
+                  className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-white"
+                  style={{ backgroundColor: '#B3261E' }}
                 >
                   Stop
                 </button>
@@ -226,7 +232,8 @@ export default function MultiModalChatPage() {
                 <button
                   type="submit"
                   disabled={!hasImage || status !== "ready"}
-                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: '#5E7A0F' }}
                 >
                   Send Image
                 </button>

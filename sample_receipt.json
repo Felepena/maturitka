@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "name": "Milk 1L",
+      "quantity": 1,
+      "price": 1.29,
+      "expiryDate": "2025-12-01"
+    },
+    {
+      "name": "Bananas",
+      "quantity": 3,
+      "price": 0.85,
+      "expiryDate": null
+    }
+  ],
+  "total": 2.14
+}

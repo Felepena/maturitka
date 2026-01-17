@@ -2,8 +2,9 @@
 
 /* Base theme */
 html, body {
-  background-color: #fafafa;
-  color: #0a0a0a;
+  /* Warm cream background to match mockups */
+  background-color: #F5F0D7;
+  color: #1a1a1a;
 }
 
 /* Space for fixed header */
@@ -16,8 +17,14 @@ body {
   outline: none;
 }
 *:focus-visible {
-  outline: 2px solid #0a0a0a;
+  outline: 2px solid #5E7A0F; /* olive accent */
   outline-offset: 2px;
+}
+
+/* Opt-out helper for inputs that should not show the global outline */
+input.no-focus:focus, input.no-focus:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Typography tweaks */

@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation"  // for router
 import {AuthProvider, useAuth} from "../contex/contex"
 import React, { useState, useEffect } from "react"
+import { ChefHat } from "lucide-react"
 import Link from "next/link"
 
 
@@ -14,7 +15,6 @@ export default function SignupPage() {
     const [loading, setIsLoading] = useState(false)
     const { signUp, user } = useAuth()
     const router = useRouter()
-    const [username, setUsername] = useState("")
 
     useEffect(() => {
         if (!loading && user) {
@@ -31,11 +31,10 @@ export default function SignupPage() {
         setIsLoading(true)
 
         try {
-            await signUp(email, password, username || undefined)
+            await signUp(email, password)
             setSuccess("Account created successfully! You can now log in.")
             setEmail("")
             setPassword("")
-            setUsername("")
         } catch (err) {
             if (err instanceof Error) {
                 setError(err.message)
@@ -51,67 +50,57 @@ export default function SignupPage() {
 
     return (
 
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-                <h1 className="text-3xl font-bold mb-8 text-center text-indigo-600">Create Account</h1>
-                {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-                {success && <p className="text-green-500 text-sm mb-4">{success}</p>}
-                <form onSubmit={handleSignup} className="space-y-6">
-                    <div className="flex" >
-                        <label htmlFor="Username" className="block text-sm font-medium text-gray-700">
-                            Username
-                        </label>
-                        <input
-                            id="username"
-                            type="text"
-                            placeholder="Username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:outline-none"
-                            disabled={loading}
-                        />
+        <div className="min-h-[calc(100vh-56px)] flex items-center justify-center px-4 py-10">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-md overflow-hidden border border-neutral-300/40">
+                <div className="px-6 pt-8 pb-6 text-center bg-white">
+                    <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{backgroundColor:'#D7E5CF'}}>
+                        <ChefHat className="w-8 h-8" style={{color:'#5E7A0F'}} />
                     </div>
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                            Email Address
-                        </label>
-                        <input
-                            id="email"
-                            type="email"
-                            placeholder="Enter your email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:outline-none"
-                            disabled={loading}
-                        />
-                    </div>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900">Create Account</h1>
+                    <p className="text-neutral-600 mt-2">Join CheffAI to start cooking smarter</p>
+                </div>
 
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                            Password
-                        </label>
-                        <input
-                            id="password"
-                            type="password"
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-indigo-200 focus:outline-none"
-                            disabled={loading}
-                        />
-                    </div>
+                <div className="h-px bg-neutral-300/60" />
+
+                {error && <p className="text-red-600 text-sm px-6 pt-4">{error}</p>}
+                {success && <p className="text-green-700 text-sm px-6 pt-4">{success}</p>}
+                <form onSubmit={handleSignup} className="px-6 py-6 space-y-4">
+                    <label className="block text-sm font-medium text-neutral-800">Email Address</label>
+                    <input
+                        id="email"
+                        type="email"
+                        placeholder="name@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 py-2 rounded-md bg-neutral-900 text-white placeholder-neutral-300 focus:outline-none focus:ring-2 focus:ring-[#5E7A0F]"
+                        disabled={loading}
+                    />
+
+                    <label className="block text-sm font-medium text-neutral-800">Password</label>
+                    <input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full px-4 py-2 rounded-md bg-neutral-900 text-white placeholder-neutral-300 focus:outline-none focus:ring-2 focus:ring-[#5E7A0F]"
+                        disabled={loading}
+                    />
                     <button
                         type="submit"
-                        className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md transition disabled:bg-indigo-300"
+                        className="w-full px-4 py-2 rounded-md text-white font-semibold shadow-sm disabled:opacity-70"
+                        style={{backgroundColor:'#5E7A0F'}}
                         disabled={loading}
                     >
-                        {loading ? "Creating Account..." : "Sign Up"}
+                        {loading ? "Creating Account..." : "Sign up"}
                     </button>
                 </form>
-                <p className="mt-6 text-center text-gray-600">
-                    Already have an account?{" "}
-                    <Link href="/login" className="text-indigo-500 hover:underline">
-                        Log In
+
+                <div className="h-px bg-neutral-300/60" />
+                <p className="px-6 py-6 text-center text-neutral-700">
+                    Already have an account?{' '}
+                    <Link href="/login" className="font-semibold hover:underline" style={{color:'#5E7A0F'}}>
+                        Log in
                     </Link>
                 </p>
             </div>
