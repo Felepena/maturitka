@@ -1,7 +1,6 @@
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { db } from "@/app/lib/config";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+
 
 export async function POST(req: Request) {
   try {
@@ -10,19 +9,17 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({} as any));
     const prompt: string = body?.prompt ?? "";
     const uid: string | undefined = body?.uid ?? qpUid;
+    const inventoryFromClient: any[] | undefined = Array.isArray(body?.inventory)
+      ? (body.inventory as any[])
+      : undefined;
+    const inventoryTableText: string | undefined = typeof body?.inventoryTableText === 'string' ? body.inventoryTableText : undefined;
 
-    // Gather Firestore context if a uid is provided; otherwise continue without it.
-    let firestoreContext: any = null;
-    if (uid) {
+    let inventoryContext: any = null;
+    let inventorySummaryLocal: { name: string; quantity: number; earliestExpiry: string | null; daysUntilExpiry: number | null }[] | null = null;
+    if (inventoryFromClient && inventoryFromClient.length > 0) {
       try {
-        const userRef = doc(db, "users", uid);
-        const userSnap = await getDoc(userRef);
-        const receiptsSnap = await getDocs(collection(db, "users", uid, "receipts"));
-
-        const receipts = receiptsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-        // Derive a compact inventory summary with earliest expiry and daysUntilExpiry.
-        type Bucket = { name: string; quantity: number; earliestExpiry: string | null };
+        const now = Date.now();
+        const dayMs = 1000 * 60 * 60 * 24;
         const toDate = (val: any): Date | null => {
           if (!val) return null;
           if (typeof val === "object" && typeof val.toDate === "function") {
@@ -55,78 +52,81 @@ export async function POST(req: Request) {
           }
           return null;
         };
-
-        const buckets = new Map<string, Bucket>();
-        for (const r of receipts as any[]) {
-          const itemsNew: any[] = Array.isArray(r?.items) ? r.items : [];
-          const itemsLegacy: any[] = Array.isArray(r?.data?.products) ? r.data.products : [];
-          const itemsAlt: any[] = Array.isArray(r?.data?.items) ? r.data.items : [];
-          const all = [...itemsNew, ...itemsLegacy, ...itemsAlt];
-          for (const p of all) {
-            const nameField = typeof p?.name === "string" ? p.name : p?.product_name;
-            if (!p || typeof nameField !== "string") continue;
-            const norm = nameField.trim().toLowerCase();
-            const qty = Number.isFinite(Number(p?.quantity)) ? Number(p.quantity) : 1;
-            const expiryRaw: any = (p?.expiryDate ?? p?.expiry_date ?? p?.expiry ?? p?.expirationDate ?? p?.expDate) ?? null;
-            const d = toDate(expiryRaw);
-            const iso = d ? d.toISOString().slice(0, 10) : null;
-            const existing = buckets.get(norm);
-            if (!existing) {
-              buckets.set(norm, { name: nameField, quantity: qty, earliestExpiry: iso });
-            } else {
-              existing.quantity += qty;
-              if (iso) {
-                if (!existing.earliestExpiry) {
-                  existing.earliestExpiry = iso;
-                } else {
-                  const cur = toDate(existing.earliestExpiry);
-                  if (!cur || (d && +d < +cur)) existing.earliestExpiry = iso;
-                }
-              }
-            }
-          }
-        }
-
-        const now = Date.now();
-        const dayMs = 1000 * 60 * 60 * 24;
-        const inventorySummary = Array.from(buckets.values()).map((b) => {
-          const t = b.earliestExpiry ? Date.parse(b.earliestExpiry) : NaN;
+        const inventorySummary = (inventoryFromClient as any[]).map((it) => {
+          const d = toDate(it?.earliestExpiry ?? it?.expiry ?? null);
+          const iso = d ? d.toISOString().slice(0, 10) : null;
+          const t = iso ? Date.parse(iso) : NaN;
           const daysUntilExpiry = Number.isFinite(t) ? Math.ceil((t - now) / dayMs) : null;
-          return { ...b, daysUntilExpiry };
-        }).sort((a, b) => {
-          const aVal = a.daysUntilExpiry ?? Number.POSITIVE_INFINITY;
-          const bVal = b.daysUntilExpiry ?? Number.POSITIVE_INFINITY;
-          return aVal - bVal;
+          return {
+            name: String(it?.name ?? "").trim(),
+            quantity: Number.isFinite(Number(it?.quantity)) ? Number(it.quantity) : 1,
+            earliestExpiry: iso,
+            daysUntilExpiry,
+          };
+        }).filter((x) => x.name);
+        inventorySummaryLocal = inventorySummary;
+        const sortedSoonest = [...inventorySummary].sort((a, b) => {
+          const aT = a.earliestExpiry ? Date.parse(a.earliestExpiry) : Infinity;
+          const bT = b.earliestExpiry ? Date.parse(b.earliestExpiry) : Infinity;
+          return aT - bT;
         });
-
-        firestoreContext = {
-          user: userSnap.exists() ? { id: userSnap.id, ...userSnap.data() } : null,
-          receipts,
-          inventorySummary,
-        };
-      } catch (ctxErr) {
-        // If Firestore access fails, proceed with prompt only.
-        console.warn("Failed to fetch Firestore context:", ctxErr);
-      }
+        const allowedNames = inventorySummary.map((x) => x.name);
+        inventoryContext = { user: { id: uid }, inventorySummary, sortedSoonest, allowedNames };
+      } catch {}
     }
 
-    const instructionPlaceholders = `
-- Role/Persona: <You are an AI chef focused on preventing food waste. You plan meals, recipes, and prep steps that use available ingredients efficiently while maintaining food safety. You can read the current Firestore inventory data and should treat it as the source of truth.>
-- Goals/Priority: <Primary goal is to use ingredients before they expire. Prefer ingredients with fewer days remaining until expiration, but you may choose a different item when it enables a plan that consumes more total at risk food, avoids unsafe combinations, or creates a more practical set of meals. Secondary goals are to minimize leftovers, reuse components across meals, and reduce unnecessary purchases.>
-- Tone/Style: <Clear concise, practical, and neutral. Give direct instructions. Avoid filler and avoid emphasis formatting>
-- Domain Rules/Constraints: <Use only ingredients present in Firestore unless the user explicitly allows buying items. Always check days remaining and prioritize items nearing expiration. Do not suggest using food that is expired or unsafe. If any Firestore fields are missing or ambiguous, state the assumption you are making and proceed with the best safe option. Prefer recipes that share base components to maximize usage. When proposing storage or prep, include safe handling and timing guidance based on days remaining>
-- Output Format: <Plain text with short headings and numbered lists when helpful. No bullet points. No emojis. No emphasis or highlighting. Include an ingredient usage summary that maps each suggested recipe to the Firestore items it consumes and the quantity if available.>
-`;
+    // No special fridge intent handling: always include context and stream the model's response.
 
-    const contextBlock = firestoreContext
-      ? `\nHere is the user's Firestore data (JSON):\n${JSON.stringify(firestoreContext, null, 2)}\n\n`
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const instructionPlaceholders = [
+  'Today\'s date is ' + todayIso + '. You have access below to the user\'s CURRENT inventory captured from the My Products page.',
+  'Treat the section "EXACT FRIDGE TABLE" as the source-of-truth for what the user currently has; do not edit that table. You may, however, suggest complementary pantry basics or extras as a Shopping List when helpful.',
+  '',
+  'ROLE: Friendly, creative chef who reduces food waste and writes detailed, practical instructions.',
+  'GOAL: Propose a delicious recipe the user can cook now, prioritizing items that expire soon. Be helpful and flexible.',
+  'STYLE: Natural, encouraging, and detailed. Include temperatures, times, textures, and substitution ideas. You may format your response (headings, lists) as you see fit, but do not use bold or markdown emphasis (no ** or *).',
+  '',
+  'Guidance (not strict rules):',
+  '  - Always consider the EXACT FRIDGE TABLE below and prefer using those items; treat it as the current source of truth.',
+  '  - Prefer ingredients from the provided inventory, especially those expiring soon (see sortedSoonest). Avoid clearly expired items.',
+  '  - If you include anything not in inventory, mark it under "Shopping List" and keep it minimal.',
+  '  - If quantities are unknown, assume sensible amounts and note assumptions.',
+  '  - If the user asks something unrelated to recipes, answer normally, but still consider inventory when relevant.',
+  '',
+  'Suggested sections (use your judgment):',
+  '  - Title',
+  '  - Servings and Time',
+  '  - Ingredients (clearly indicate which come from inventory)',
+  '  - Steps (numbered, detailed, with temperatures/timings)',
+  '  - Tips / Substitutions / Storage',
+  '  - Shopping List (only if truly necessary)',
+  '  - Uses From Inventory (short list)',
+  '',
+  'If inventory appears empty, you can suggest a general recipe and include a short Shopping List.',
+].join('\n');
+
+    const contextBlock = inventoryContext
+      ? `\nHere is the user inventory context (JSON):\n${JSON.stringify(inventoryContext, null, 2)}\n\n`
+      : "";
+    const exactTableBlock = inventoryTableText && inventoryTableText.trim().length > 0
+      ? `\nEXACT FRIDGE TABLE (authoritative, do not deviate):\n${inventoryTableText}\n\n`
+      : "";
+    const allowedNamesBlock = inventoryContext && Array.isArray(inventoryContext.allowedNames)
+      ? `ALLOWED INGREDIENTS (names only):\n${(inventoryContext.allowedNames as string[]).join("\n")}\n\n`
+      : "";
+    const soonestBlock = inventoryContext && Array.isArray(inventoryContext.sortedSoonest)
+      ? `SOONEST FIRST (name | days):\n${(inventoryContext.sortedSoonest as any[]).slice(0, 8).map((x:any)=>`${x.name} | ${x.daysUntilExpiry ?? 'no-date'}`).join("\n")}\n\n`
       : "";
 
-    const finalPrompt = `${instructionPlaceholders}${contextBlock}User message:\n${prompt}`;
+    const policyBlock = `\nInventory Policy:\n- Use ingredients from the EXACT FRIDGE TABLE above as primary.\n- If you include anything not in the table, put it in Shopping List.\n- Do not use bold or markdown emphasis.\n\n`;
+    const systemContent = `${exactTableBlock}${allowedNamesBlock}${soonestBlock}${instructionPlaceholders}${policyBlock}${contextBlock}`;
 
     const result = streamText({
-      model: openai("gpt-4.1-nano"),
-      prompt: finalPrompt,
+      model: openai("gpt-4o-mini"),
+      messages: [
+        { role: "system", content: systemContent },
+        { role: "user", content: prompt }
+      ],
     });
     return result.toUIMessageStreamResponse();
   } catch (error) {

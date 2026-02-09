@@ -70,7 +70,6 @@ export default function MultiModalChatPage() {
           { label: "from msg", len: finalText.length },
         ];
 
-        // 2) If empty, scan from end for the latest assistant message with text
         if (!finalText && Array.isArray(allMessages)) {
           for (let i = allMessages.length - 1; i >= 0; i--) {
             const candidate = allMessages[i];

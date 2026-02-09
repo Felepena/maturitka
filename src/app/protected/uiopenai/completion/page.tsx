@@ -3,7 +3,9 @@ import { useState } from "react";
 import { useAuth } from "@/app/contex/contex";
 import { saveReceipt } from "@/app/lib/save-receipt";
 
-export default function CompletionPage() {
+export default function 
+
+     CompletionPage() {
   const [prompt, setPrompt] = useState("");
   const [completion, setCompletion] = useState("");
   const [error, setError] = useState<string | null>(null);
