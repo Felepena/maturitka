@@ -84,7 +84,7 @@ export async function POST(req: Request) {
   '',
   'ROLE: Friendly, creative chef who reduces food waste and writes detailed, practical instructions.',
   'GOAL: Propose a delicious recipe the user can cook now, prioritizing items that expire soon. Be helpful and flexible.',
-  'STYLE: Natural, encouraging, and detailed. Include temperatures, times, textures, and substitution ideas. You may format your response (headings, lists) as you see fit, but do not use bold or markdown emphasis (no ** or *).',
+  'STYLE: Natural, encouraging, and detailed. Include temperatures, times, textures, and substitution ideas. Do not use bold, hashtags (#), or any markdown; output plain text only.',
   '',
   'Guidance (not strict rules):',
   '  - Always consider the EXACT FRIDGE TABLE below and prefer using those items; treat it as the current source of truth.',
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
       ? `SOONEST FIRST (name | days):\n${(inventoryContext.sortedSoonest as any[]).slice(0, 8).map((x:any)=>`${x.name} | ${x.daysUntilExpiry ?? 'no-date'}`).join("\n")}\n\n`
       : "";
 
-    const policyBlock = `\nInventory Policy:\n- Use ingredients from the EXACT FRIDGE TABLE above as primary.\n- If you include anything not in the table, put it in Shopping List.\n- Do not use bold or markdown emphasis.\n\n`;
+    const policyBlock = `\nInventory Policy:\n- Use ingredients from the EXACT FRIDGE TABLE above as primary.\n- If you include anything not in the table, put it in Shopping List.\n- Do not use bold, hashtags (#), or any markdown; plain text only.\n\n`;
     const systemContent = `${exactTableBlock}${allowedNamesBlock}${soonestBlock}${instructionPlaceholders}${policyBlock}${contextBlock}`;
 
     const result = streamText({
