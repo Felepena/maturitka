@@ -47,8 +47,8 @@ export default function LoginPage() {
                     <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{backgroundColor:'#D7E5CF'}}>
                         <ChefHat className="w-8 h-8" style={{color:'#5E7A0F'}} />
                     </div>
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900">Welcome to CheffAI</h1>
-                    <p className="text-neutral-600 mt-2">Sign in to your account to continue</p>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900">Welcome to SmartChef AI</h1>
+                    <p className="text-neutral-600 mt-2">Sign in to your SmartChef AI account to continue</p>
                 </div>
 
                 <div className="h-px bg-neutral-300/60" />

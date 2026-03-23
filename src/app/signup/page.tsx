@@ -56,8 +56,8 @@ export default function SignupPage() {
                     <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{backgroundColor:'#D7E5CF'}}>
                         <ChefHat className="w-8 h-8" style={{color:'#5E7A0F'}} />
                     </div>
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900">Create Account</h1>
-                    <p className="text-neutral-600 mt-2">Join CheffAI to start cooking smarter</p>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-neutral-900">Create Your SmartChef AI Account</h1>
+                    <p className="text-neutral-600 mt-2">Join SmartChef AI to start cooking smarter</p>
                 </div>
 
                 <div className="h-px bg-neutral-300/60" />

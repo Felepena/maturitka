@@ -114,6 +114,8 @@ export async function POST(req: Request) {
       messages: [
         { role: "system", content: `Today's date is ${todayIso}. If you are unsure about the current date or need to compute relative dates (e.g., \"in 3 days\", shelf life, or \"what day is it\"), use ${todayIso} as the source of truth for \"today\ and then guess the expiary date from today".` },
         { role: "system",content: "You parse a receipt provided as plain text. " +
+              "ASSUME RECEIPT IS CZECH (cs-CZ). Currency is CZK. Numbers may use comma as decimal separator (e.g., 12,50). Parse such numbers correctly as decimals. " +
+              "Product names should be Czech where applicable. Remove store/brand prefixes and extra tokens (e.g., 'TESCO BANANA' -> 'banana', 'K-CLASSIC MLEKO' -> 'mléko'). " +
               "FAIL-FAST (HIGHEST PRIORITY): " +
               "If the input text is empty, unreadable, too blurry, corrupted, not a receipt, or you cannot confidently COPY product names exactly as written, " +
               "then return items = [] and total = 0. DO NOT guess. DO NOT invent. " +
@@ -132,14 +134,12 @@ export async function POST(req: Request) {
               "Extract each FOOD/DRINK product line. " +
               "Identify the product name (copied verbatim). " +
               "Estimate the quantity if it is not explicitly written (default = 1). " +
-              "Extract the price if present; if not found or not readable, set price = null. " +
+              "Extract the price in CZK if present; if not found or not readable, set price = null. If a unit price is shown with CZK and commas, convert to a proper number. " +
               " " +
-              "DATE LOGIC: Find the receipt purchase date if present. Define base_date as: " +
-              "- if receipt date is found use that" +
-              ""+
+              "DATE LOGIC: Define base_date as today's date unless a clear purchase date is on the receipt; in ambiguous cases, use today. You MUST GUESS expiry from base_date for all perishable items. " +
               "EXPIRY LOGIC (FOOD/DRINK ONLY): " +
               "1) If an explicit expiry/BBE/use-by date is written on the receipt for that product, use it. " +
-              "2) Otherwise, estimate expiry from base_date using the shelf-life rules below. " +
+              "2) Otherwise, estimate expiry from base_date using the shelf-life rules below. THIS IS MANDATORY (you must guess). " +
               " " +
               "MANDATORY INTERNAL PROCESS (DO NOT OUTPUT): " +
               "Before estimating expiry, classify the item into exactly one category below. " +
@@ -167,6 +167,7 @@ export async function POST(req: Request) {
               "HARD CONSTRAINTS: " +
               "- expiry must NEVER be before base_date. " +
               "- expiry must NEVER be more than base_date + 365 days (except expiry = null). " +
+              "- For perishable items you MUST return a non-null expiryDate guessed from base_date; only shelf-stable pantry/canned/drinks may be null. " +
               "- If item is shelf-stable pantry/canned/shelf-stable drinks: expiry = null (do not invent far-future dates). " +
               " " +
               "Calculate \"total\" as the sum of all prices (ignore nulls). " +
@@ -179,7 +180,8 @@ export async function POST(req: Request) {
         },
         { role: "system", content: [
           "Return JSON with this exact shape:",
-          "{ \"items\": [ { \"name\": string, \"quantity\": number, \"price\": number|null, \"expiryDate\": string|null } ] }",
+          "{ \"items\": [ { \"name\": string, \"quantity\": number, \"grams\": number|null, \"price\": number|null, \"expiryDate\": string|null } ] }",
+          "- If the receipt line clearly indicates a weight in grams (like 250g, 1kg -> 1000), set grams to that numeric value; otherwise set grams = null.",
           "- expiryDate must be ISO YYYY-MM-DD or null.",
           "- Do not include any other top-level keys.",
           "- No prose. No code fences."

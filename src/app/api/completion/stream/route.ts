@@ -79,16 +79,19 @@ export async function POST(req: Request) {
 
     const todayIso = new Date().toISOString().slice(0, 10);
     const instructionPlaceholders = [
-  'Today\'s date is ' + todayIso + '. You have access below to the user\'s CURRENT inventory captured from the My Products page.',
-  'Treat the section "EXACT FRIDGE TABLE" as the source-of-truth for what the user currently has; do not edit that table. You may, however, suggest complementary pantry basics or extras as a Shopping List when helpful.',
+  'Today\'s date is ' + todayIso + '. You have access below to the user\'s CURRENT Digital Fridge captured from the My Products page.',
+  'Treat the section "EXACT FRIDGE TABLE" as the source-of-truth for what the user currently has in the Digital Fridge; do not edit that table. You may, however, suggest complementary pantry basics or extras as a Shopping List when helpful.',
   '',
   'ROLE: Friendly, creative chef who reduces food waste and writes detailed, practical instructions.',
   'GOAL: Propose a delicious recipe the user can cook now, prioritizing items that expire soon. Be helpful and flexible.',
-  'STYLE: Natural, encouraging, and detailed. Include temperatures, times, textures, and substitution ideas. Do not use bold, hashtags (#), or any markdown; output plain text only.',
+  'STYLE: Natural, encouraging, and detailed. Include temperatures, times, textures, and substitution ideas. ABSOLUTELY NO MARKDOWN OR LIST SYMBOLS: do not use #, *, -, •, bullets, code fences, underscores, or any decorative symbols. Use simple plain sentences. If you need lists, use simple numbered lines like 1) 2) 3) without extra symbols.',
   '',
   'Guidance (not strict rules):',
   '  - Always consider the EXACT FRIDGE TABLE below and prefer using those items; treat it as the current source of truth.',
-  '  - Prefer ingredients from the provided inventory, especially those expiring soon (see sortedSoonest). Avoid clearly expired items.',
+  '  - Prefer ingredients from the Digital Fridge, especially those expiring soon (see sortedSoonest). Avoid clearly expired items.',
+  '  - Ignore drinks-only items (e.g., water, soda, cola, juice, energy drinks, beer, wine, cider, lemonade) unless the user explicitly asks for a beverage.',
+  '  - When specifying amounts, use grams only if the product in the Digital Fridge already has a weight in grams; otherwise use unit quantities. Do not invent grams.',
+  '  - Special case: for milk, express amounts in liters (L) in the plain-text recipe. In the JSON, put the same numeric value into the grams field (treat liters == grams numerically for storage).',
   '  - If you include anything not in inventory, mark it under "Shopping List" and keep it minimal.',
   '  - If quantities are unknown, assume sensible amounts and note assumptions.',
   '  - If the user asks something unrelated to recipes, answer normally, but still consider inventory when relevant.',
@@ -96,13 +99,20 @@ export async function POST(req: Request) {
   'Suggested sections (use your judgment):',
   '  - Title',
   '  - Servings and Time',
-  '  - Ingredients (clearly indicate which come from inventory)',
-  '  - Steps (numbered, detailed, with temperatures/timings)',
+  '  - Ingredients',
+  '  - Steps',
   '  - Tips / Substitutions / Storage',
   '  - Shopping List (only if truly necessary)',
   '  - Uses From Inventory (short list)',
   '',
-  'If inventory appears empty, you can suggest a general recipe and include a short Shopping List.',
+  'After the plain-text recipe, append a single machine-readable JSON object on the last line with this exact prefix and shape:',
+  '  JSON_ONLY={ "recipe": { "name": string, "ingredients": [ { "name": string, "quantity": number|null, "grams": number|null } ] } }',
+  '  - Do NOT normalize or rename ingredient names. Use the exact strings from ALLOWED INGREDIENTS (from receipts/Digital Fridge), including casing, accents, and spacing. If a needed item is not present there, omit it from the JSON and put it in Shopping List instead.',
+  '  - Use grams only if that ingredient has a known grams value in the Digital Fridge; otherwise set grams to null and use quantity instead (or 0/null if unknown).',
+  '  - Only include ingredients that map to items in ALLOWED INGREDIENTS (Digital Fridge) when possible; unfamiliar extras should be in Shopping List and omitted from the JSON.',
+  'If the Digital Fridge is empty or not provided, explicitly start by saying it is empty, then still provide helpful general tips, simple recipes, and an optional short Shopping List.',
+        "also do not use bold, hashtags (#), asterisks (*), dashes (-), bullets (•), or any markdown-like symbols; output plain text only.",
+
 ].join('\n');
 
     const contextBlock = inventoryContext
@@ -118,7 +128,7 @@ export async function POST(req: Request) {
       ? `SOONEST FIRST (name | days):\n${(inventoryContext.sortedSoonest as any[]).slice(0, 8).map((x:any)=>`${x.name} | ${x.daysUntilExpiry ?? 'no-date'}`).join("\n")}\n\n`
       : "";
 
-    const policyBlock = `\nInventory Policy:\n- Use ingredients from the EXACT FRIDGE TABLE above as primary.\n- If you include anything not in the table, put it in Shopping List.\n- Do not use bold, hashtags (#), or any markdown; plain text only.\n\n`;
+    const policyBlock = `\nDigital Fridge Policy:\n- Use ingredients from the EXACT FRIDGE TABLE above as primary.\n- Prefer grams for amounts when available; otherwise use unit counts.\n- If you include anything not in the table, put it in Shopping List.\n- Do not use bold, hashtags (#), or any markdown; plain text only.\n\n`;
     const systemContent = `${exactTableBlock}${allowedNamesBlock}${soonestBlock}${instructionPlaceholders}${policyBlock}${contextBlock}`;
 
     const result = streamText({
@@ -134,3 +144,4 @@ export async function POST(req: Request) {
     return new Response("Failed to stream text", { status: 500 });
   }
 }
+
