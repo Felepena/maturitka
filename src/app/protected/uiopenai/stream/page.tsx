@@ -15,6 +15,7 @@ export default function StreamPage() {
   const { user } = useAuth();
   const { items: inventory, setItems: setInventory } = useInventory();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isApplyingRecipe, setIsApplyingRecipe] = useState(false);
   const namesWithKnownGrams = new Set(
     (Array.isArray(inventory) ? inventory : [])
       .filter((it: any) => typeof it?.grams === 'number' && Number.isFinite(it.grams))
@@ -90,9 +91,12 @@ export default function StreamPage() {
           {!!recipe && !isLoading && (
             <div className="flex justify-end">
               <button
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700"
+                disabled={isApplyingRecipe}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={async () => {
+                  if (isApplyingRecipe) return;
                   if (!user?.uid) return alert('Sign in to apply recipe.');
+                  setIsApplyingRecipe(true);
                   try {
                     const ings = recipe.ingredients || [];
                     const drinkWords = ['water','soda','cola','juice','energy drink','beer','wine','cider','lemonade','kvass','iced tea','drink'];
@@ -120,10 +124,11 @@ export default function StreamPage() {
                     router.push(url);
                   } catch (e: any) {
                     alert(e?.message ?? 'Failed to apply recipe');
+                    setIsApplyingRecipe(false);
                   }
                 }}
               >
-                Use Recipe
+                {isApplyingRecipe ? 'Applying...' : 'Use Recipe'}
               </button>
             </div>
           )}

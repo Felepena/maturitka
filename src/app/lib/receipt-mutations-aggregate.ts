@@ -69,56 +69,95 @@ export async function decrementOrRemoveByName(params: {
   if (amount <= 0) return;
   const snap = await getDocs(collection(db, "users", uid, "receipts"));
   const target = normName(productName);
-  const ops: Promise<void>[] = [];
-  snap.forEach((d) => {
-    const ref = doc(db, "users", uid, "receipts", d.id);
-    ops.push(
-      runTransaction(db, async (tx) => {
-        const s = await tx.get(ref);
-        if (!s.exists()) return;
-        const data = s.data() as any;
-        let products: any[] = Array.isArray(data?.data?.products) ? data.data.products.slice() : [];
-        let items: any[] = Array.isArray(data?.items) ? data.items.slice() : [];
-        let itemsAlt: any[] = Array.isArray(data?.data?.items) ? data.data.items.slice() : [];
-        let changed = false;
-        products = products.reduce((acc: any[], p: any) => {
-          const name = typeof p?.product_name === "string" ? p.product_name : "";
-          if (normName(name) !== target) { acc.push(p); return acc; }
-          const q = Number(p?.quantity);
-          const cur = Number.isFinite(q) ? q : 0;
-          const next = cur - amount;
-          if (next > 0) { acc.push({ ...p, quantity: next }); }
-          changed = true;
-          return acc;
-        }, [] as any[]);
-        items = items.reduce((acc: any[], p: any) => {
-          const name = typeof p?.name === "string" ? p.name : "";
-          if (normName(name) !== target) { acc.push(p); return acc; }
-          const q = Number(p?.quantity);
-          const cur = Number.isFinite(q) ? q : 0;
-          const next = cur - amount;
-          if (next > 0) { acc.push({ ...p, quantity: next }); }
-          changed = true;
-          return acc;
-        }, [] as any[]);
-        itemsAlt = itemsAlt.reduce((acc: any[], p: any) => {
-          const name = typeof p?.name === "string" ? p.name : "";
-          if (normName(name) !== target) { acc.push(p); return acc; }
-          const q = Number(p?.quantity);
-          const cur = Number.isFinite(q) ? q : 0;
-          const next = cur - amount;
-          if (next > 0) { acc.push({ ...p, quantity: next }); }
-          changed = true;
-          return acc;
-        }, [] as any[]);
-        if (changed) tx.update(ref, {
-          ...(Array.isArray(data?.data?.products) ? { "data.products": products } : {}),
-          ...(Array.isArray(data?.items) ? { items } : {}),
-          ...(Array.isArray(data?.data?.items) ? { "data.items": itemsAlt } : {}),
-        });
-      })
+  const docs = snap.docs.map((d) => ({ id: d.id, data: d.data() as any }));
+  let remaining = amount;
+  const updates = new Map<string, any>();
+
+  const consumeQuantity = (
+    receiptId: string,
+    arr: any[],
+    readName: (p: any) => string,
+    writeQuantity: (p: any, quantity: number) => any
+  ) => {
+    if (!Array.isArray(arr) || remaining <= 0) return arr;
+    const next: any[] = [];
+    let localChanged = false;
+
+    for (const entry of arr) {
+      const name = readName(entry);
+      if (normName(name) !== target || remaining <= 0) {
+        next.push(entry);
+        continue;
+      }
+
+      const q = Number(entry?.quantity);
+      const cur = Number.isFinite(q) ? q : 0;
+      if (cur <= 0) continue;
+
+      if (cur > remaining) {
+        next.push(writeQuantity(entry, cur - remaining));
+        remaining = 0;
+      } else {
+        remaining -= cur;
+      }
+      localChanged = true;
+    }
+
+    if (localChanged) {
+      const update = updates.get(receiptId) ?? {};
+      updates.set(receiptId, update);
+    }
+
+    return next;
+  };
+
+  for (const receipt of docs) {
+    if (remaining <= 0) break;
+    const receiptId = receipt.id;
+    const data = receipt.data;
+    const nextProducts = consumeQuantity(
+      receiptId,
+      Array.isArray(data?.data?.products) ? data.data.products.slice() : [],
+      (p) => String(p?.product_name || ""),
+      (p, quantity) => ({ ...p, quantity })
     );
-  });
+    if (Array.isArray(data?.data?.products) && updates.has(receiptId)) {
+      updates.set(receiptId, { ...(updates.get(receiptId) ?? {}), "data.products": nextProducts });
+    }
+
+    if (remaining <= 0) continue;
+
+    const nextItems = consumeQuantity(
+      receiptId,
+      Array.isArray(data?.items) ? data.items.slice() : [],
+      (p) => String(p?.name || ""),
+      (p, quantity) => ({ ...p, quantity })
+    );
+    if (Array.isArray(data?.items) && updates.has(receiptId)) {
+      updates.set(receiptId, { ...(updates.get(receiptId) ?? {}), items: nextItems });
+    }
+
+    if (remaining <= 0) continue;
+
+    const nextItemsAlt = consumeQuantity(
+      receiptId,
+      Array.isArray(data?.data?.items) ? data.data.items.slice() : [],
+      (p) => String(p?.name || ""),
+      (p, quantity) => ({ ...p, quantity })
+    );
+    if (Array.isArray(data?.data?.items) && updates.has(receiptId)) {
+      updates.set(receiptId, { ...(updates.get(receiptId) ?? {}), "data.items": nextItemsAlt });
+    }
+  }
+
+  const ops = Array.from(updates.entries()).map(([receiptId, patch]) =>
+    runTransaction(db, async (tx) => {
+      const ref = doc(db, "users", uid, "receipts", receiptId);
+      const s = await tx.get(ref);
+      if (!s.exists() || Object.keys(patch).length === 0) return;
+      tx.update(ref, patch);
+    })
+  );
   await Promise.all(ops);
 }
 
@@ -294,41 +333,96 @@ export async function decrementGramsByName(params: { uid: string; productName: s
   if (!(grams > 0)) return;
   const snap = await getDocs(collection(db, "users", uid, "receipts"));
   const target = normName(productName);
-  const ops: Promise<void>[] = [];
-  snap.forEach((d) => {
-    const ref = doc(db, "users", uid, "receipts", d.id);
-    ops.push(
-      runTransaction(db, async (tx) => {
-        const s = await tx.get(ref);
-        if (!s.exists()) return;
-        const data = s.data() as any;
-        let products: any[] = Array.isArray(data?.data?.products) ? data.data.products.slice() : [];
-        let items: any[] = Array.isArray(data?.items) ? data.items.slice() : [];
-        let itemsAlt: any[] = Array.isArray(data?.data?.items) ? data.data.items.slice() : [];
-        let changed = false;
+  const docs = snap.docs.map((d) => ({ id: d.id, data: d.data() as any }));
+  let remaining = grams;
+  const updates = new Map<string, any>();
 
-        const dec = (arr: any[], nameSel: (p:any)=>string) => {
-          for (let i = 0; i < arr.length; i++) {
-            const name = nameSel(arr[i]);
-            if (normName(name) !== target) continue;
-            const g = Number(arr[i]?.grams);
-            if (!Number.isFinite(g)) continue;
-            const next = g - grams;
-            arr[i] = { ...arr[i], grams: next > 0 ? next : null };
-            changed = true;
-          }
-        };
-        dec(products, (p)=> String(p?.product_name || ""));
-        dec(items, (p)=> String(p?.name || ""));
-        dec(itemsAlt, (p)=> String(p?.name || ""));
+  const consumeGrams = (
+    receiptId: string,
+    arr: any[],
+    readName: (p: any) => string,
+    patchEntry: (p: any, nextGrams: number) => any
+  ) => {
+    if (!Array.isArray(arr) || remaining <= 0) return arr;
+    const next: any[] = [];
+    let localChanged = false;
 
-        if (changed) tx.update(ref, {
-          ...(Array.isArray(data?.data?.products) ? { "data.products": products } : {}),
-          ...(Array.isArray(data?.items) ? { items } : {}),
-          ...(Array.isArray(data?.data?.items) ? { "data.items": itemsAlt } : {}),
-        });
-      })
+    for (const entry of arr) {
+      const name = readName(entry);
+      if (normName(name) !== target || remaining <= 0) {
+        next.push(entry);
+        continue;
+      }
+
+      const current = Number(entry?.grams);
+      if (!Number.isFinite(current) || current <= 0) {
+        next.push(entry);
+        continue;
+      }
+
+      if (current > remaining) {
+        next.push(patchEntry(entry, current - remaining));
+        remaining = 0;
+      } else {
+        remaining -= current;
+      }
+      localChanged = true;
+    }
+
+    if (localChanged) {
+      const update = updates.get(receiptId) ?? {};
+      updates.set(receiptId, update);
+    }
+
+    return next;
+  };
+
+  for (const receipt of docs) {
+    if (remaining <= 0) break;
+    const receiptId = receipt.id;
+    const data = receipt.data;
+    const nextProducts = consumeGrams(
+      receiptId,
+      Array.isArray(data?.data?.products) ? data.data.products.slice() : [],
+      (p) => String(p?.product_name || ""),
+      (p, nextGrams) => ({ ...p, grams: nextGrams })
     );
-  });
+    if (Array.isArray(data?.data?.products) && updates.has(receiptId)) {
+      updates.set(receiptId, { ...(updates.get(receiptId) ?? {}), "data.products": nextProducts });
+    }
+
+    if (remaining <= 0) continue;
+
+    const nextItems = consumeGrams(
+      receiptId,
+      Array.isArray(data?.items) ? data.items.slice() : [],
+      (p) => String(p?.name || ""),
+      (p, nextGrams) => ({ ...p, grams: nextGrams })
+    );
+    if (Array.isArray(data?.items) && updates.has(receiptId)) {
+      updates.set(receiptId, { ...(updates.get(receiptId) ?? {}), items: nextItems });
+    }
+
+    if (remaining <= 0) continue;
+
+    const nextItemsAlt = consumeGrams(
+      receiptId,
+      Array.isArray(data?.data?.items) ? data.data.items.slice() : [],
+      (p) => String(p?.name || ""),
+      (p, nextGrams) => ({ ...p, grams: nextGrams })
+    );
+    if (Array.isArray(data?.data?.items) && updates.has(receiptId)) {
+      updates.set(receiptId, { ...(updates.get(receiptId) ?? {}), "data.items": nextItemsAlt });
+    }
+  }
+
+  const ops = Array.from(updates.entries()).map(([receiptId, patch]) =>
+    runTransaction(db, async (tx) => {
+      const ref = doc(db, "users", uid, "receipts", receiptId);
+      const s = await tx.get(ref);
+      if (!s.exists() || Object.keys(patch).length === 0) return;
+      tx.update(ref, patch);
+    })
+  );
   await Promise.all(ops);
 }
