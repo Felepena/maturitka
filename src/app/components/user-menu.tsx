@@ -59,14 +59,6 @@ export default function UserMenu() {
           className="absolute right-0 mt-2 w-44 rounded-xl shadow-lg overflow-hidden border bg-white"
           style={{borderColor:'#e5e7eb'}}
         >
-          <Link
-            href="/settingsPage"
-            className="block w-full text-left px-4 py-2 text-sm text-neutral-800 hover:bg-neutral-50"
-            onClick={() => setOpen(false)}
-          >
-            Settings
-          </Link>
-          <div className="h-px bg-neutral-200" />
           <button
             onClick={signOut}
             className="w-full text-left px-4 py-2 text-sm text-neutral-800 hover:bg-neutral-50"

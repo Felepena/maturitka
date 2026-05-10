@@ -101,13 +101,6 @@ export default function navbar() {
                       Used Recipes
                     </Link>
                     <div className="my-1 h-px bg-neutral-200" />
-                    <Link
-                      href="/settingsPage"
-                      className="px-4 py-3 text-sm text-neutral-800 hover:bg-neutral-50"
-                      onClick={closeMobileMenu}
-                    >
-                      Settings
-                    </Link>
                     <button
                       type="button"
                       onClick={() => {
