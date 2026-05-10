@@ -134,6 +134,12 @@ export async function POST(req: Request) {
               "Extract each FOOD/DRINK product line. " +
               "Identify the product name (copied verbatim). " +
               "Estimate the quantity if it is not explicitly written (default = 1). " +
+              "UNIT RULES (MANDATORY): " +
+              "For eggs (vejce, vajicka, vajíčka, plato vajec, carton of eggs), NEVER estimate or store grams. Put the count of pieces into quantity and set grams = null. " +
+              "If the receipt suggests a pack of eggs with a visible count like 6, 10, 12, 15, 20, or 30, use that piece count in quantity. If no count is visible, use quantity = 1 and grams = null. " +
+              "For milk (mleko, mléko), NEVER convert liters or milliliters into quantity pieces unless the pack count is explicit. Store the package count in quantity and store the volume in grams using liters as the numeric unit for storage. " +
+              "Examples: 1 L milk => quantity = 1, grams = 1; 500 ml milk => quantity = 1, grams = 0.5; 2x 1 L milk => quantity = 2, grams = 1 for each line item if it is one product line representing that milk product. " +
+              "For flour (mouka), sugar, rice, pasta, meat, cheese, fruit, vegetables, and other weighted products, use grams only when the receipt clearly implies weight/volume; otherwise grams = null. " +
               "Extract the price in CZK if present; if not found or not readable, set price = null. If a unit price is shown with CZK and commas, convert to a proper number. " +
               " " +
               "DATE LOGIC: Define base_date as today's date unless a clear purchase date is on the receipt; in ambiguous cases, use today. You MUST GUESS expiry from base_date for all perishable items. " +
@@ -182,6 +188,8 @@ export async function POST(req: Request) {
           "Return JSON with this exact shape:",
           "{ \"items\": [ { \"name\": string, \"quantity\": number, \"grams\": number|null, \"price\": number|null, \"expiryDate\": string|null } ] }",
           "- If the receipt line clearly indicates a weight in grams (like 250g, 1kg -> 1000), set grams to that numeric value; otherwise set grams = null.",
+          "- Exception: eggs must always use quantity as piece count and grams must be null.",
+          "- Exception: milk must store liters in the grams field as a decimal number of liters, not grams. Example: 1 L => grams = 1, 500 ml => grams = 0.5.",
           "- expiryDate must be ISO YYYY-MM-DD or null.",
           "- Do not include any other top-level keys.",
           "- No prose. No code fences."

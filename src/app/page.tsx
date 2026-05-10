@@ -102,8 +102,131 @@ export default function Home() {
                       </Button>
                   </Link>
               </section>
+
+              <div className="max-w-6xl mx-auto my-10 h-px bg-neutral-300/40"/>
+
+              <section className="max-w-3xl mx-auto py-10">
+                <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-2 text-center">Report a Bug</h2>
+                <p className="text-neutral-700 text-center mb-6">Spotted an issue? Tell us what went wrong.</p>
+                <BugReportForm />
+              </section>
           </main>
           <SiteFooter/>
       </div>
+  );
+}
+
+import { useState } from "react";
+
+function BugReportForm() {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("sending");
+    setError(null);
+    setFieldErrors({});
+    try {
+      const idempotencyKey = `bug-report/${crypto.randomUUID()}`;
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({ email, subject, message, name }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 400 && data?.fieldErrors) {
+          setFieldErrors(data.fieldErrors);
+        }
+        const detailMsg =
+          (typeof data?.details === "string" && data.details) ||
+          (typeof data?.details?.message === "string" && data.details.message) ||
+          (typeof data?.message === "string" && data.message) ||
+          "Failed to send";
+        throw new Error(`${data?.error || "Failed to send email"}: ${detailMsg}`);
+      }
+      setStatus("success");
+      setEmail("");
+      setName("");
+      setSubject("");
+      setMessage("");
+    } catch (err: any) {
+      setStatus("error");
+      setError(err?.message || "Something went wrong");
+    }
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="mx-auto grid gap-4 max-w-2xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input
+          type="text"
+          placeholder="Your name (optional)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#5E7A0F]"
+        />
+        <input
+          type="email"
+          placeholder="Your email (Gmail preferred)"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#5E7A0F]"
+        />
+      </div>
+      {fieldErrors?.email?.length ? (
+        <p className="text-xs text-red-700">{fieldErrors.email[0]}</p>
+      ) : null}
+      <input
+        type="text"
+        placeholder="Subject"
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        required
+        minLength={1}
+        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#5E7A0F]"
+      />
+      {fieldErrors?.subject?.length ? (
+        <p className="text-xs text-red-700">{fieldErrors.subject[0]}</p>
+      ) : null}
+      <textarea
+        placeholder="Describe the bug, steps to reproduce, and expected behavior."
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        required
+        minLength={5}
+        rows={6}
+        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#5E7A0F]"
+      />
+      {fieldErrors?.message?.length ? (
+        <p className="text-xs text-red-700">{fieldErrors.message[0]}</p>
+      ) : null}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-neutral-500">We’ll reply to confirm and follow up if needed.</p>
+        <Button
+          type="submit"
+          disabled={status === "sending"}
+          className="bg-[#5E7A0F] hover:bg-[#4F680D] text-white px-5 py-2 rounded-md"
+        >
+          {status === "sending" ? "Sending…" : "Send Bug Report"}
+        </Button>
+      </div>
+      {status === "success" && (
+        <p className="text-sm text-green-700">Thanks! Your bug report has been sent.</p>
+      )}
+      {status === "error" && (
+        <p className="text-sm text-red-700">{error || "Could not send bug report."}</p>
+      )}
+    </form>
   );
 }
