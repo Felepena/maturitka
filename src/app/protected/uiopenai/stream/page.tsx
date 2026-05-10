@@ -166,10 +166,11 @@ export default function StreamPage() {
             const bT = b?.earliestExpiry ? Date.parse(b.earliestExpiry) : Infinity;
             return aT - bT;
           });
-          const header = `Name | Quantity | Total | Earliest Expiry | Days`;
+          const header = `Name | Quantity | Grams/Liters | Total | Earliest Expiry | Days`;
           const rows = sorted.map((it: any) => {
             const name = String(it?.name ?? '').trim();
             const qty = Number.isFinite(Number(it?.quantity)) ? Number(it.quantity) : 1;
+            const grams = Number.isFinite(Number(it?.grams)) ? Number(it.grams) : null;
             const total = fmtPrice(it?.totalPrice);
             const expiryIso = it?.earliestExpiry ?? null;
             const expiryText = (() => {
@@ -182,7 +183,7 @@ export default function StreamPage() {
               return `${dd}/${mm}/${yy}`
             })();
             const daysText = toDays(expiryIso);
-            return `${name} | ${qty} | ${total} | ${expiryText} | ${daysText}`;
+            return `${name} | ${qty} | ${grams ?? '-'} | ${total} | ${expiryText} | ${daysText}`;
           });
           const tableText = [header, ...rows].join('\n');
           setMessages((prev) => [...prev, { role: 'user', content: prompt }]);

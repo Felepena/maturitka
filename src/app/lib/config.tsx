@@ -3,15 +3,32 @@ import { getAuth } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
 
+function requireEnv(name: string, value: string | undefined) {
+  const normalized = value?.trim()
+  if (!normalized) {
+    throw new Error(`Missing required Firebase environment variable: ${name}`)
+  }
+  return normalized
+}
+
+const firebaseEnv = {
+  apiKey: requireEnv("NEXT_PUBLIC_FIREBASE_API_KEY", process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
+  authDomain: requireEnv("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
+  projectId: requireEnv("NEXT_PUBLIC_FIREBASE_PROJECT_ID", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+  storageBucket: requireEnv("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET", process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: requireEnv("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID", process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
+  appId: requireEnv("NEXT_PUBLIC_FIREBASE_APP_ID", process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID?.trim() || undefined,
+}
 
 export const firebaseConfig = {
-    apiKey: "AIzaSyD2XLq4DgEKrT9F1j8COri7pJED9P18tSw",
-    authDomain: "logintryout-1365f.firebaseapp.com",
-    projectId: "logintryout-1365f",
-    storageBucket: "logintryout-1365f.appspot.com",
-    messagingSenderId: "816831549871",
-    appId: "1:816831549871:web:ab2fb762d32e8abd151f5a",
-    measurementId: "G-0RWX2KE2PH",
+    apiKey: firebaseEnv.apiKey,
+    authDomain: firebaseEnv.authDomain,
+    projectId: firebaseEnv.projectId,
+    storageBucket: firebaseEnv.storageBucket,
+    messagingSenderId: firebaseEnv.messagingSenderId,
+    appId: firebaseEnv.appId,
+    measurementId: firebaseEnv.measurementId,
 }
 
 

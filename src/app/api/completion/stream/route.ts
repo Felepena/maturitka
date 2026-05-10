@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const inventoryTableText: string | undefined = typeof body?.inventoryTableText === 'string' ? body.inventoryTableText : undefined;
 
     let inventoryContext: any = null;
-    let inventorySummaryLocal: { name: string; quantity: number; earliestExpiry: string | null; daysUntilExpiry: number | null }[] | null = null;
+    let inventorySummaryLocal: { name: string; quantity: number; grams: number | null; earliestExpiry: string | null; daysUntilExpiry: number | null }[] | null = null;
     if (inventoryFromClient && inventoryFromClient.length > 0) {
       try {
         const now = Date.now();
@@ -60,6 +60,7 @@ export async function POST(req: Request) {
           return {
             name: String(it?.name ?? "").trim(),
             quantity: Number.isFinite(Number(it?.quantity)) ? Number(it.quantity) : 1,
+            grams: Number.isFinite(Number(it?.grams)) ? Number(it.grams) : null,
             earliestExpiry: iso,
             daysUntilExpiry,
           };
@@ -91,6 +92,7 @@ export async function POST(req: Request) {
   '  - Prefer ingredients from the Digital Fridge, especially those expiring soon (see sortedSoonest). Avoid clearly expired items.',
   '  - Ignore drinks-only items (e.g., water, soda, cola, juice, energy drinks, beer, wine, cider, lemonade) unless the user explicitly asks for a beverage.',
   '  - When specifying amounts, use grams only if the product in the Digital Fridge already has a weight in grams; otherwise use unit quantities. Do not invent grams.',
+  '  - For flour, sugar, rice, pasta, oats, meat, cheese, butter, and similar weighted ingredients, if the Digital Fridge shows a grams value then the recipe must use grams in both the recipe text and JSON. Do not use quantity as if it were grams.',
   '  - Special case: for milk, express amounts in liters (L) in the plain-text recipe. In the JSON, put the same numeric value into the grams field (treat liters == grams numerically for storage).',
   '  - Special case: for eggs, always express amounts as pieces or count in both the recipe text and JSON quantity field. Never put eggs into the grams field.',
   '  - If you include anything not in inventory, mark it under "Shopping List" and keep it minimal.',
@@ -110,6 +112,7 @@ export async function POST(req: Request) {
   '  JSON_ONLY={ "recipe": { "name": string, "ingredients": [ { "name": string, "quantity": number|null, "grams": number|null } ] } }',
   '  - Do NOT normalize or rename ingredient names. Use the exact strings from ALLOWED INGREDIENTS (from receipts/Digital Fridge), including casing, accents, and spacing. If a needed item is not present there, omit it from the JSON and put it in Shopping List instead.',
   '  - Use grams only if that ingredient has a known grams value in the Digital Fridge; otherwise set grams to null and use quantity instead (or 0/null if unknown).',
+  '  - For flour and other weighted pantry items, if the Digital Fridge has grams available, put the used amount into grams and leave quantity as package count only. Never copy package quantity into grams.',
   '  - Eggs are an exception: always set grams to null and use quantity for the piece count, even if another ingredient in the recipe uses grams.',
   '  - Only include ingredients that map to items in ALLOWED INGREDIENTS (Digital Fridge) when possible; unfamiliar extras should be in Shopping List and omitted from the JSON.',
   'If the Digital Fridge is empty or not provided, explicitly start by saying it is empty, then still provide helpful general tips, simple recipes, and an optional short Shopping List.',
