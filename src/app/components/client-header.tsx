@@ -35,6 +35,7 @@ export default function navbar() {
   }, [user])
 
   const closeMobileMenu = () => setMobileMenuOpen(false)
+  const isAuthenticated = !loading && !!user
 
   return (
     <header className="fixed top-0 inset-x-0 h-[120px] z-50 border-b border-neutral-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70 shadow-sm">
@@ -63,7 +64,7 @@ export default function navbar() {
             </Link>
           )}
           {!loading && user ? <div className="hidden sm:block"><UserMenu /></div> : null}
-          {!loading && user ? (
+          {!loading ? (
             <div className="sm:hidden relative" ref={mobileMenuRef}>
               <button
                 type="button"
@@ -79,38 +80,74 @@ export default function navbar() {
               {mobileMenuOpen && (
                 <div className="absolute right-0 top-full mt-3 w-56 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-lg">
                   <nav className="flex flex-col py-2">
-                    <Link
-                      href="/protected/myproducts"
-                      className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
-                      onClick={closeMobileMenu}
-                    >
-                      Smart Fridge
-                    </Link>
-                    <Link
-                      href="/protected/uiopenai/chatPictures"
-                      className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
-                      onClick={closeMobileMenu}
-                    >
-                      Add Products
-                    </Link>
-                    <Link
-                      href="/protected/used-recipes"
-                      className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
-                      onClick={closeMobileMenu}
-                    >
-                      Used Recipes
-                    </Link>
-                    <div className="my-1 h-px bg-neutral-200" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeMobileMenu()
-                        void signOut()
-                      }}
-                      className="px-4 py-3 text-left text-sm text-neutral-800 hover:bg-neutral-50"
-                    >
-                      Sign out
-                    </button>
+                    {isAuthenticated ? (
+                      <>
+                        <Link
+                          href="/protected/myproducts"
+                          className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                          onClick={closeMobileMenu}
+                        >
+                          Smart Fridge
+                        </Link>
+                        <Link
+                          href="/protected/uiopenai/chatPictures"
+                          className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                          onClick={closeMobileMenu}
+                        >
+                          Add Products
+                        </Link>
+                        <Link
+                          href="/protected/used-recipes"
+                          className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                          onClick={closeMobileMenu}
+                        >
+                          Used Recipes
+                        </Link>
+                        <div className="my-1 h-px bg-neutral-200" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            closeMobileMenu()
+                            void signOut()
+                          }}
+                          className="px-4 py-3 text-left text-sm text-neutral-800 hover:bg-neutral-50"
+                        >
+                          Sign out
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          href="/"
+                          className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                          onClick={closeMobileMenu}
+                        >
+                          Home
+                        </Link>
+                        <Link
+                          href="/login"
+                          className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                          onClick={closeMobileMenu}
+                        >
+                          Login
+                        </Link>
+                        <Link
+                          href="/signup"
+                          className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                          onClick={closeMobileMenu}
+                        >
+                          Sign up
+                        </Link>
+                        <div className="my-1 h-px bg-neutral-200" />
+                        <Link
+                          href="/protected/uiopenai/stream"
+                          className="px-4 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                          onClick={closeMobileMenu}
+                        >
+                          Get Started
+                        </Link>
+                      </>
+                    )}
                   </nav>
                 </div>
               )}

@@ -197,7 +197,7 @@ export async function POST(req: Request) {
         ...convertToModelMessages(messages),
       ],
     });
-
+  
     return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("Error streaming chat completion:", error);
